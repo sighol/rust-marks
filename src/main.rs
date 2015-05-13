@@ -70,33 +70,48 @@ fn main() {
     	Err(f) => {print_usage(&program, opts); panic!("{}", f)}
     };
 
-    let add = matches.opt_str("a");
-    let remove = matches.opt_str("r");
+    let mut num_matches = 0;
 
-    if add.is_some() {
-    	map.insert(add.unwrap(), cwd.clone());
-    	write_json(&path, &map);
-    }else if remove.is_some() {
-    	let bm = remove.unwrap();
-    	let bm_str = &bm;
-    	if map.contains_key(bm_str) {
-    		map.remove(bm_str);
-    		write_json(&path, &map);
-    	}
-    } else if matches.opt_present("k") {
-    	let keys = get_keys(&map);
-    	for key in keys {
-    		println!("{}", key);
-    	}
-    } else if !matches.free.is_empty() {
-    	let key = matches.free[0].clone();
-    	if map.contains_key(&key) {
-    		println!("{}", map.get(&key).unwrap());
-    	} else {
-    		panic!("Key not found: {}", key);
-    	}
-    } else {
-   		print_map(&map);
+    match matches.opt_str("a") {
+        Some(a) => {
+            map.insert(a, cwd.clone());
+            write_json(&path, &map);
+            num_matches += 1;
+        },
+        _ => {}
+    };
+
+    match matches.opt_str("r") {
+        Some(bm) => {
+            let bm_str = &bm;
+            if map.contains_key(bm_str) {
+                map.remove(bm_str);
+                write_json(&path, &map);
+            }
+            num_matches += 1;
+        },
+        _ => {}
+    };
+
+    if matches.opt_present("k") {
+        let keys = get_keys(&map);
+        for key in keys {
+            println!("{}", key);
+        }
+        num_matches += 1;
+    }
+
+    if !matches.free.is_empty() {
+        let key = matches.free[0].clone();
+        if map.contains_key(&key) {
+            println!("{}", map.get(&key).unwrap());
+        } else {
+            panic!("Key not found: {}", key);
+        }
+    }
+
+    if num_matches == 0 {
+        print_map(&map);
     }
 }
 
