@@ -116,8 +116,8 @@ fn print_map(map: &HashMap<String, String>) {
     for key in keys {
         let mut bfr = "".to_string();
         let len = key.len();
-        for i in 0..(max_len-len) {
-            bfr.insert(i, ' ');
+        for _ in 0..(max_len-len) {
+            bfr.push(' ');
         }
         println!("{}{} : {}", bfr, key, map.get(key).unwrap());
     }
