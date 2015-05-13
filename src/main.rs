@@ -1,4 +1,3 @@
-
 extern crate rustc_serialize;
 extern crate getopts;
 
@@ -6,13 +5,10 @@ extern crate getopts;
 use rustc_serialize::json;
 use getopts::Options;
 use std::env;
-
-use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
-use std::collections::BTreeMap;
 
 fn main() {
     let path_sting = get_path();
@@ -75,14 +71,15 @@ fn print_usage(program: &str, opts: Options) {
 }
 
 fn read_json(path: &Path) -> HashMap<String, String> {
+    let display = path.display();
     let mut file = match File::open(path) {
-    	Err(why) => panic!("Could not open {}: {}", path.display(), Error::description(&why)),
+    	Err(why) => panic!("Could not open {}: {}", display, why),
     	Ok(file) => file,
     };
 
     let mut s = String::new();
     match file.read_to_string(&mut s) {
-    	Err(why) => panic!("Couldn't read {}: {}", path.display(), Error::description(&why)),
+    	Err(why) => panic!("Couldn't read {}: {}", display, why),
     	Ok(_) => 0,
     };
 
@@ -94,8 +91,14 @@ fn write_json(path: &Path, map: &HashMap<String, String>) {
 	let output = json::encode(map).unwrap();
 
 	let mut f = File::create(path).unwrap();
-	f.write_all(output.as_bytes());
-	f.sync_all();
+	match f.write_all(output.as_bytes()) {
+        Ok(_) => {},
+        Err(why) => panic!("Could not write to file: {}", why)
+    }
+	match f.sync_all() {
+        Ok(_) => {},
+        Err(why) => panic!("Could not sync file: {}", why)
+    }
 }
 
 fn get_keys(map: &HashMap<String, String>) -> Vec<&String> {
@@ -106,7 +109,7 @@ fn get_keys(map: &HashMap<String, String>) -> Vec<&String> {
 
 fn print_map(map: &HashMap<String, String>) {
 	let mut max_len = 0;
-	for (key, value) in map {
+	for (key, _) in map {
 		if key.len() > max_len {
 			max_len = key.len();
 		}
@@ -114,7 +117,6 @@ fn print_map(map: &HashMap<String, String>) {
 	max_len += 2;
 
 	let keys = get_keys(map);
-
 	for key in keys {
 		let mut bfr = "".to_string();
 		let len = key.len();
