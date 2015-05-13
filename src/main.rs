@@ -44,8 +44,8 @@ fn main() {
             println!("{}", key);
         }
     } else if !matches.free.is_empty() {
-        let key = matches.free[0].clone();
-        if let Some(value) = map.get(&key) {
+        let key = &matches.free[0];
+        if let Some(value) = map.get(key) {
             println!("{}", value);
         } else {
             panic!("Key not found: {}", key);
