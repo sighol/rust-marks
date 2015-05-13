@@ -25,32 +25,28 @@ fn main() {
     opts.optopt("r", "remove", "Remove bookmark", "NAME");
     opts.optflag("k", "keys", "List Keys");
 
-    let matches = match opts.parse(&args[1..]) {
-        Ok(m) => m,
-        Err(f) => {
-            print_usage(&program, opts);
-            panic!("{}", f)
-        }
-    };
+
+    let matches = opts.parse(&args[1..]).unwrap_or_else(|e| {
+        print_usage(&program, opts);
+        panic!("{}", e)
+    });
 
     if let Some(a) = matches.opt_str("a") {
         map.insert(a, cwd.clone());
         write_json(&path, &map);
     } else if let Some(bm) = matches.opt_str("r") {
         let bm_str = &bm;
-        if map.contains_key(bm_str) {
-            map.remove(bm_str);
+        if map.remove(bm_str).is_some() {
             write_json(&path, &map);
         }
     } else if matches.opt_present("k") {
-        let keys = get_keys(&map);
-        for key in keys {
+        for key in get_keys(&map) {
             println!("{}", key);
         }
     } else if !matches.free.is_empty() {
         let key = matches.free[0].clone();
-        if map.contains_key(&key) {
-            println!("{}", map.get(&key).unwrap());
+        if let Some(value) = map.get(&key) {
+            println!("{}", value);
         } else {
             panic!("Key not found: {}", key);
         }
@@ -72,57 +68,57 @@ fn print_usage(program: &str, opts: Options) {
 
 fn read_json(path: &Path) -> HashMap<String, String> {
     let display = path.display();
-    let mut file = match File::open(path) {
-    	Err(why) => panic!("Could not open {}: {}", display, why),
-    	Ok(file) => file,
-    };
+    let mut file = File::open(path).unwrap_or_else(|why| {
+        panic!("Could not open {}: {}", display, why);
+    });
 
     let mut s = String::new();
-    match file.read_to_string(&mut s) {
-    	Err(why) => panic!("Couldn't read {}: {}", display, why),
-    	Ok(_) => 0,
-    };
+    file.read_to_string(&mut s).unwrap_or_else(|why| {
+        panic!("Couldn't read {}: {}", display, why);
+    });
 
-    let map: HashMap<String,String> = json::decode(&s).unwrap();
+    let map: HashMap<String,String> = json::decode(&s).unwrap_or_else(|why| {
+        panic!("Could not Decode JSON: {}", why);
+    });
     map
 }
 
 fn write_json(path: &Path, map: &HashMap<String, String>) {
-	let output = json::encode(map).unwrap();
+    let output = json::encode(map).unwrap();
 
-	let mut f = File::create(path).unwrap();
-	match f.write_all(output.as_bytes()) {
-        Ok(_) => {},
-        Err(why) => panic!("Could not write to file: {}", why)
-    }
-	match f.sync_all() {
-        Ok(_) => {},
-        Err(why) => panic!("Could not sync file: {}", why)
-    }
+    let mut f = File::create(path).unwrap_or_else(|why| {
+        panic!("Could not create file {}: {}", path.display(), why);
+    });
+    f.write_all(output.as_bytes()).unwrap_or_else(|why| {
+        panic!("Could not write to file: {}", why);
+    });
+    f.sync_all().unwrap_or_else(|why| {
+        panic!("Could not sync file: {}", why)
+    });
 }
 
 fn get_keys(map: &HashMap<String, String>) -> Vec<&String> {
-	let mut keys: Vec<&String> = map.keys().collect();
-	keys.sort();
-	keys
+    let mut keys: Vec<&String> = map.keys().collect();
+    keys.sort();
+    keys
 }
 
 fn print_map(map: &HashMap<String, String>) {
-	let mut max_len = 0;
-	for (key, _) in map {
-		if key.len() > max_len {
-			max_len = key.len();
-		}
-	}
-	max_len += 2;
+    let mut max_len = 0;
+    for (key, _) in map {
+        if key.len() > max_len {
+            max_len = key.len();
+        }
+    }
+    max_len += 2;
 
-	let keys = get_keys(map);
-	for key in keys {
-		let mut bfr = "".to_string();
-		let len = key.len();
-		for i in 0..(max_len-len) {
-			bfr.insert(i, ' ');
-		}
-		println!("{}{} : {}", bfr, key, map.get(key).unwrap());
-	}
+    let keys = get_keys(map);
+    for key in keys {
+        let mut bfr = "".to_string();
+        let len = key.len();
+        for i in 0..(max_len-len) {
+            bfr.insert(i, ' ');
+        }
+        println!("{}{} : {}", bfr, key, map.get(key).unwrap());
+    }
 }
