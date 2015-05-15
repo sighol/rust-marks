@@ -119,7 +119,7 @@ fn print_map(map: &HashMap<String, String>) {
             max_len = key.len();
         }
     }
-    max_len += 2;
+    max_len += 1;
 
     let keys = get_keys(map);
     for key in keys {
@@ -128,6 +128,6 @@ fn print_map(map: &HashMap<String, String>) {
         for _ in 0..(max_len-len) {
             bfr.push(' ');
         }
-        println!("{}{} : {}", bfr, key, map.get(key).unwrap());
+        println!("{}{}: {}", bfr, key, map.get(key).unwrap());
     }
 }
