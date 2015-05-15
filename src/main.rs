@@ -1,51 +1,65 @@
 extern crate rustc_serialize;
-extern crate getopts;
+extern crate docopt;
 
 
 use rustc_serialize::json;
-use getopts::Options;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 
+static USAGE: &'static str = "
+Usage:
+    marks
+    marks <tag>
+    marks --add=TAG
+    marks --remove=TAG
+    marks --keys
+    marks --help
+
+Options:
+    -k, --keys          Show keys.
+    -a, --add=TAG       Add new tag.
+    -r, --remove=TAG    Remove tag.
+    -h, --help          Show this message.
+";
+
+#[derive(RustcDecodable, Debug)]
+struct Args {
+    arg_tag: Option<String>,
+    flag_add: Option<String>,
+    flag_remove: Option<String>,
+    flag_keys: bool,
+}
+
 fn main() {
+
+    let args: Args = docopt::Docopt::new(USAGE)
+                                    .map(|a| a.help(true))
+                                    .and_then(|d| d.decode())
+                                    .unwrap_or_else(|e| e.exit());
     let path_sting = get_path();
     let path = Path::new(&path_sting);
     let mut map = read_json(&path);
 
-    let args: Vec<String> = env::args().collect();
-    let program = args[0].clone();
     let cwd_path = env::current_dir().unwrap();
     let cwd: String = cwd_path.to_str().unwrap().to_string();
 
-    let mut opts = Options::new();
-    opts.optopt("a", "add", "Add new bookmark", "NAME");
-    opts.optopt("r", "remove", "Remove bookmark", "NAME");
-    opts.optflag("k", "keys", "List Keys");
-
-
-    let matches = opts.parse(&args[1..]).unwrap_or_else(|e| {
-        print_usage(&program, opts);
-        panic!("{}", e)
-    });
-
-    if let Some(a) = matches.opt_str("a") {
+    if let Some(a) = args.flag_add {
         map.insert(a, cwd.clone());
         write_json(&path, &map);
-    } else if let Some(bm) = matches.opt_str("r") {
+    } else if let Some(bm) = args.flag_remove {
         let bm_str = &bm;
         if map.remove(bm_str).is_some() {
             write_json(&path, &map);
         }
-    } else if matches.opt_present("k") {
+    } else if args.flag_keys {
         for key in get_keys(&map) {
             println!("{}", key);
         }
-    } else if !matches.free.is_empty() {
-        let key = &matches.free[0];
-        if let Some(value) = map.get(key) {
+    } else if let Some(key) = args.arg_tag {
+        if let Some(value) = map.get(&key) {
             println!("{}", value);
         } else {
             panic!("Key not found: {}", key);
@@ -59,11 +73,6 @@ fn get_path() -> PathBuf {
     let mut bookmark = env::home_dir().unwrap();
     bookmark.push(".bookmarks");
     bookmark
-}
-
-fn print_usage(program: &str, opts: Options) {
-    let brief = format!("Usage: {} [options]", program);
-    print!("{}", opts.usage(&brief));
 }
 
 fn read_json(path: &Path) -> HashMap<String, String> {
