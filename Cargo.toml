@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["Sigurd Holsen <sighol@gmail.com>"]
 
 [dependencies]
-rustc-serialize = "0.3.14"
+rustc-serialize = "*"
 docopt = "*"
