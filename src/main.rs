@@ -39,8 +39,14 @@ fn main() {
                                     .map(|a| a.help(true))
                                     .and_then(|d| d.decode())
                                     .unwrap_or_else(|e| e.exit());
-    let path_sting = get_path();
-    let path = Path::new(&path_sting);
+    let path_string = get_path();
+    let path = Path::new(&path_string);
+
+    if std::fs::metadata(&path_string).is_err() {
+        let empty_map: HashMap<String, String> = HashMap::new();
+        write_json(&path, &empty_map);
+    }
+
     let mut map = read_json(&path);
 
     let cwd_path = env::current_dir().unwrap();
