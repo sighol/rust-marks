@@ -16,6 +16,8 @@ Usage:
     marks --add=TAG
     marks --remove=TAG
     marks --keys
+    marks --check
+    marks --clean
     marks --help
 
 Options:
@@ -31,6 +33,8 @@ struct Args {
     flag_add: Option<String>,
     flag_remove: Option<String>,
     flag_keys: bool,
+    flag_check: bool,
+    flag_clean: bool,
 }
 
 fn main() {
@@ -64,6 +68,15 @@ fn main() {
         for key in get_keys(&map) {
             println!("{}", key);
         }
+    } else if args.flag_check {
+        for (key, value) in &map {
+            if std::fs::metadata(&value).is_err()
+            {
+                println!("{}, {} does not exist", key, value);
+            }
+        }
+    } else if args.flag_clean {
+        clean(&mut map, &path);
     } else if let Some(key) = args.arg_tag {
         if let Some(value) = map.get(&key) {
             println!("{}", value);
@@ -73,6 +86,28 @@ fn main() {
     } else {
         print_map(&map);
     }
+}
+
+fn clean(map: &mut HashMap<String, String>, path: &Path) {
+    let keys = get_bad_keys(map);
+    for key in &keys {
+        println!("Removing {} ...", &key);
+        let my_key: String = key.clone();
+        map.remove(&my_key);
+    }
+
+    write_json(&path, &map);
+}
+
+fn get_bad_keys(map: &mut HashMap<String, String>) -> Vec<String> {
+    let mut remove_keys = Vec::new();
+    for (key, value) in map {
+        if std::fs::metadata(&value).is_err()
+        {
+            remove_keys.push(key.to_string());
+        }
+    }
+    remove_keys
 }
 
 fn get_path() -> PathBuf {
@@ -104,9 +139,11 @@ fn write_json(path: &Path, map: &HashMap<String, String>) {
     let mut f = File::create(path).unwrap_or_else(|why| {
         panic!("Could not create file {}: {}", path.display(), why);
     });
+
     f.write_all(output.as_bytes()).unwrap_or_else(|why| {
         panic!("Could not write to file: {}", why);
     });
+
     f.sync_all().unwrap_or_else(|why| {
         panic!("Could not sync file: {}", why)
     });
