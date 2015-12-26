@@ -1,13 +1,27 @@
 extern crate rustc_serialize;
 extern crate docopt;
 
-
 use rustc_serialize::json;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
+
+#[derive(RustcDecodable, Debug)]
+struct Args {
+    arg_tag: Option<String>,
+    flag_add: Option<String>,
+    flag_remove: Option<String>,
+    flag_keys: bool,
+    flag_check: bool,
+    flag_clean: bool,
+}
+
+struct BookmarksMap {
+    path: PathBuf,
+    map: HashMap<String, String>,
+}
 
 static USAGE: &'static str = "
 Usage:
@@ -27,150 +41,161 @@ Options:
     -h, --help          Show this message.
 ";
 
-#[derive(RustcDecodable, Debug)]
-struct Args {
-    arg_tag: Option<String>,
-    flag_add: Option<String>,
-    flag_remove: Option<String>,
-    flag_keys: bool,
-    flag_check: bool,
-    flag_clean: bool,
-}
-
 fn main() {
 
     let args: Args = docopt::Docopt::new(USAGE)
-                                    .map(|a| a.help(true))
-                                    .and_then(|d| d.decode())
-                                    .unwrap_or_else(|e| e.exit());
-    let path_string = get_path();
-    let path = Path::new(&path_string);
+        .map(|a| a.help(true))
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
 
-    if std::fs::metadata(&path_string).is_err() {
-        let empty_map: HashMap<String, String> = HashMap::new();
-        write_json(&path, &empty_map);
-    }
+    let mut bm = BookmarksMap::new();
 
-    let mut map = read_json(&path);
-
-    let cwd_path = env::current_dir().unwrap();
-    let cwd: String = cwd_path.to_str().unwrap().to_string();
-
-    if let Some(a) = args.flag_add {
-        map.insert(a, cwd.clone());
-        write_json(&path, &map);
-    } else if let Some(bm) = args.flag_remove {
-        let bm_str = &bm;
-        if map.remove(bm_str).is_some() {
-            write_json(&path, &map);
-        }
+    if let Some(key) = args.flag_add {
+        bm.add(&key);
+        bm.write()
+    } else if let Some(key) = args.flag_remove {
+        bm.remove(&key);
+        bm.write()
     } else if args.flag_keys {
-        for key in get_keys(&map) {
-            println!("{}", key);
-        }
+        bm.print_keys();
     } else if args.flag_check {
-        for (key, value) in &map {
-            if std::fs::metadata(&value).is_err()
-            {
-                println!("{}, {} does not exist", key, value);
-            }
-        }
+        bm.check();
     } else if args.flag_clean {
-        clean(&mut map, &path);
+        bm.clean();
+        bm.write()
     } else if let Some(key) = args.arg_tag {
-        if let Some(value) = map.get(&key) {
+        if let Some(value) = bm.get(&key) {
             println!("{}", value);
         } else {
-            panic!("Key not found: {}", key);
+            panic!("Key not found {}", key);
         }
     } else {
-        print_map(&map);
+        bm.print();
     }
 }
 
-fn clean(map: &mut HashMap<String, String>, path: &Path) {
-    let keys = get_bad_keys(map);
-    for key in &keys {
-        println!("Removing {} ...", &key);
-        let my_key: String = key.clone();
-        map.remove(&my_key);
-    }
 
-    write_json(&path, &map);
-}
+impl BookmarksMap{
+    fn new() -> BookmarksMap {
+        let path_buf = BookmarksMap::get_path();
 
-fn get_bad_keys(map: &mut HashMap<String, String>) -> Vec<String> {
-    let mut remove_keys = Vec::new();
-    for (key, value) in map {
-        if std::fs::metadata(&value).is_err()
-        {
-            remove_keys.push(key.to_string());
+        BookmarksMap {
+            map: BookmarksMap::read(&path_buf),
+            path: path_buf,
         }
     }
-    remove_keys
-}
 
-fn get_path() -> PathBuf {
-    let mut bookmark = env::home_dir().unwrap();
-    bookmark.push(".bookmarks");
-    bookmark
-}
+    fn get_path() -> PathBuf {
+        let mut bookmark = env::home_dir().unwrap();
+        bookmark.push(".bookmarks");
+        bookmark
+    }
 
-fn read_json(path: &Path) -> HashMap<String, String> {
-    let display = path.display();
-    let mut file = File::open(path).unwrap_or_else(|why| {
-        panic!("Could not open {}: {}", display, why);
-    });
+    fn get(&self, key: &str) -> Option<String> {
+        self.map.get(key).map(|v| v.clone())
+    }
 
-    let mut s = String::new();
-    file.read_to_string(&mut s).unwrap_or_else(|why| {
-        panic!("Couldn't read {}: {}", display, why);
-    });
+    fn add(&mut self, key: &str) {
+        let cwd_path = env::current_dir().unwrap();
+        let cwd = cwd_path.to_str().unwrap().to_string();
+        self.map.insert(key.to_string(), cwd);
+    }
 
-    let map: HashMap<String,String> = json::decode(&s).unwrap_or_else(|why| {
-        panic!("Could not Decode JSON: {}", why);
-    });
-    map
-}
+    fn remove(&mut self, key: &str) {
+        self.map.remove(key);
+    }
 
-fn write_json(path: &Path, map: &HashMap<String, String>) {
-    let output = json::encode(map).unwrap();
-
-    let mut f = File::create(path).unwrap_or_else(|why| {
-        panic!("Could not create file {}: {}", path.display(), why);
-    });
-
-    f.write_all(output.as_bytes()).unwrap_or_else(|why| {
-        panic!("Could not write to file: {}", why);
-    });
-
-    f.sync_all().unwrap_or_else(|why| {
-        panic!("Could not sync file: {}", why)
-    });
-}
-
-fn get_keys(map: &HashMap<String, String>) -> Vec<&String> {
-    let mut keys: Vec<&String> = map.keys().collect();
-    keys.sort();
-    keys
-}
-
-fn print_map(map: &HashMap<String, String>) {
-    let mut max_len = 0;
-    for (key, _) in map {
-        if key.len() > max_len {
-            max_len = key.len();
+    fn print_keys(&self) {
+        for (key, _) in &self.map {
+            println!("{}", key);
         }
     }
-    max_len += 1;
 
-    let keys = get_keys(map);
-    for key in keys {
-        let mut bfr = "".to_string();
-        let len = key.len();
-        for _ in 0..(max_len-len) {
-            bfr.push(' ');
+    fn print(&self) {
+        let mut max_len = 0;
+        for (key, _) in &self.map {
+            if key.len() > max_len {
+                max_len = key.len();
+            }
         }
-        println!("{}{}: {}", bfr, key, map.get(key).unwrap());
+        max_len += 1;
+
+        let keys = self.get_keys();
+        for key in keys {
+            let mut bfr = "".to_string();
+            let len = key.len();
+            for _ in 0..(max_len-len) {
+                bfr.push(' ');
+            }
+            println!("{}{}: {}", bfr, key, self.map.get(key).unwrap());
+        }
+    }
+
+    fn check(&self) {
+        let keys = self.get_bad_keys();
+        for key in keys {
+            println!("Bad key: {:10} -> {}", key, self.get(&key).unwrap());
+        }
+    }
+
+    fn clean(&mut self) {
+        let keys = self.get_bad_keys();
+        for key in &keys {
+            println!("Removing {} ...", &key);
+            let my_key: String = key.clone();
+            self.map.remove(&my_key);
+        }
+    }
+
+    fn get_bad_keys(&self) -> Vec<String> {
+        let mut remove_keys = Vec::new();
+        for (key, value) in &self.map {
+            if std::fs::metadata(&value).is_err()
+            {
+                remove_keys.push(key.to_string());
+            }
+        }
+        remove_keys.sort();
+        remove_keys
+    }
+
+    fn get_keys(&self) -> Vec<&String> {
+        let mut keys: Vec<&String> = self.map.keys().collect();
+        keys.sort();
+        keys
+    }
+
+    fn read(path: &Path) -> HashMap<String, String> {
+        let display = path.display();
+        match File::open(path) {
+            Err(_) => HashMap::new(),
+            Ok(mut file) => {
+                let mut s = String::new();
+                file.read_to_string(&mut s).unwrap_or_else(|why| {
+                    panic!("Couldn't read {}: {}", display, why);
+                });
+
+                let map: HashMap<String,String> = json::decode(&s).unwrap_or_else(|why| {
+                    panic!("Could not Decode JSON: {}", why);
+                });
+                map
+            }
+        }
+    }
+
+    fn write(&self) {
+        let output = json::encode(&self.map).unwrap();
+
+        let mut f = File::create(&self.path).unwrap_or_else(|why| {
+            panic!("Could not create file {}: {}", self.path.display(), why);
+        });
+
+        f.write_all(output.as_bytes()).unwrap_or_else(|why| {
+            panic!("Could not write to file: {}", why);
+        });
+
+        f.sync_all().unwrap_or_else(|why| {
+            panic!("Could not sync file: {}", why)
+        });
     }
 }
