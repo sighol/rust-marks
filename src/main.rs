@@ -18,9 +18,11 @@ struct Args {
     flag_clean: bool,
 }
 
+type StringMap = HashMap<String, String>;
+
 struct BookmarksMap {
     path: PathBuf,
-    map: HashMap<String, String>,
+    map: StringMap,
 }
 
 static USAGE: &'static str = "
@@ -120,8 +122,7 @@ impl BookmarksMap{
         }
         max_len += 1;
 
-        let keys = self.get_keys();
-        for key in keys {
+        for key in self.get_keys() {
             let mut bfr = "".to_string();
             let len = key.len();
             for _ in 0..(max_len-len) {
@@ -133,24 +134,23 @@ impl BookmarksMap{
 
     fn check(&self) {
         let keys = self.get_bad_keys();
-        for key in keys {
-            println!("Bad key: {:10} -> {}", key, self.get(&key).unwrap());
+        for key in &keys {
+            println!("Bad key: {:10} -> {}", key, self.get(key).unwrap());
         }
     }
 
     fn clean(&mut self) {
         let keys = self.get_bad_keys();
         for key in &keys {
-            println!("Removing {} ...", &key);
-            let my_key: String = key.clone();
-            self.map.remove(&my_key);
+            println!("Removing {} ...", key);
+            self.map.remove(key);
         }
     }
 
     fn get_bad_keys(&self) -> Vec<String> {
         let mut remove_keys = Vec::new();
         for (key, value) in &self.map {
-            if std::fs::metadata(&value).is_err()
+            if std::fs::metadata(value).is_err()
             {
                 remove_keys.push(key.to_string());
             }
@@ -165,7 +165,7 @@ impl BookmarksMap{
         keys
     }
 
-    fn read(path: &Path) -> HashMap<String, String> {
+    fn read(path: &Path) -> StringMap {
         let display = path.display();
         match File::open(path) {
             Err(_) => HashMap::new(),
