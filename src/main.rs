@@ -8,6 +8,8 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 #[derive(RustcDecodable, Debug)]
 struct Args {
     arg_tag: Option<String>,
@@ -16,6 +18,7 @@ struct Args {
     flag_keys: bool,
     flag_check: bool,
     flag_clean: bool,
+    flag_version: bool
 }
 
 type StringMap = HashMap<String, String>;
@@ -34,6 +37,7 @@ Usage:
     marks --keys
     marks --check
     marks --clean
+    marks --version
     marks --help
 
 Options:
@@ -65,6 +69,8 @@ fn main() {
     } else if args.flag_clean {
         bm.clean();
         bm.write()
+    } else if args.flag_version {
+        println!("{}", VERSION);
     } else if let Some(key) = args.arg_tag {
         if let Some(value) = bm.get(&key) {
             println!("{}", value);
