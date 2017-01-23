@@ -197,11 +197,11 @@ impl BookmarksMap{
         });
 
         f.write_all(output.as_bytes()).unwrap_or_else(|why| {
-            panic!("Could not write to file: {}", why);
+            panic!("Could not write to file  {}: {}", self.path.display(), why);
         });
 
         f.sync_all().unwrap_or_else(|why| {
-            panic!("Could not sync file: {}", why)
+            panic!("Could not sync file  {}: {}", self.path.display(), why)
         });
     }
 }
