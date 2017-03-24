@@ -33,7 +33,7 @@ Usage:
     marks
     marks <tag>
     marks --add=TAG
-    marks --remove=TAG
+    marks --delete=TAG
     marks --keys
     marks --check
     marks --clean
@@ -43,7 +43,7 @@ Usage:
 Options:
     -k, --keys          Show keys.
     -a, --add=TAG       Add new tag.
-    -r, --remove=TAG    Remove tag.
+    -d, --delete=TAG    Remove tag.
     -h, --help          Show this message.
 ";
 
