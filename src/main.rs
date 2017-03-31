@@ -14,7 +14,7 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 struct Args {
     arg_tag: Option<String>,
     flag_add: Option<String>,
-    flag_remove: Option<String>,
+    flag_delete: Option<String>,
     flag_keys: bool,
     flag_check: bool,
     flag_clean: bool,
@@ -59,7 +59,7 @@ fn main() {
     if let Some(key) = args.flag_add {
         bm.add(&key);
         bm.write()
-    } else if let Some(key) = args.flag_remove {
+    } else if let Some(key) = args.flag_delete {
         bm.remove(&key);
         bm.write()
     } else if args.flag_keys {
