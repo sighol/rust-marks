@@ -12,7 +12,7 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
-    arg_tag: Option<String>,
+    arg_bookmark: Option<String>,
     flag_add: Option<String>,
     flag_delete: Option<String>,
     flag_keys: bool,
@@ -31,9 +31,9 @@ struct BookmarksMap {
 static USAGE: &'static str = "
 Usage:
     marks
-    marks <tag>
-    marks --add=TAG
-    marks --delete=TAG
+    marks <bookmark>
+    marks --add=<bookmark>
+    marks --delete=<bookmark>
     marks --keys
     marks --check
     marks --clean
@@ -41,10 +41,13 @@ Usage:
     marks --help
 
 Options:
-    -k, --keys          Show keys.
-    -a, --add=TAG       Add new tag.
-    -d, --delete=TAG    Remove tag.
-    -h, --help          Show this message.
+    -k, --keys               Show keys.
+    -a, --add=<bookmark>     Add bookmark for current directory
+    -d, --delete=<bookmark>  Delete bookmark.
+    -h, --help               Show this message.
+    --check                  Check for tags pointing to non.
+    --clean                  Delete non existing bookmarks.
+    --version                Print version information.
 ";
 
 fn main() {
@@ -71,7 +74,7 @@ fn main() {
         bm.write();
     } else if args.flag_version {
         println!("{}", VERSION);
-    } else if let Some(key) = args.arg_tag {
+    } else if let Some(key) = args.arg_bookmark {
         if let Some(value) = bm.get(&key) {
             println!("{}", value);
         } else {
