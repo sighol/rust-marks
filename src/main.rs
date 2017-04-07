@@ -1,10 +1,10 @@
-extern crate rustc_serialize;
 extern crate docopt;
 
-use rustc_serialize::json;
+extern crate serde_json;
+extern crate rustc_serialize;
+
 use std::env;
 use std::fs::File;
-use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 
@@ -68,7 +68,7 @@ fn main() {
         bm.check();
     } else if args.flag_clean {
         bm.clean();
-        bm.write()
+        bm.write();
     } else if args.flag_version {
         println!("{}", VERSION);
     } else if let Some(key) = args.arg_tag {
@@ -110,7 +110,9 @@ impl BookmarksMap{
     }
 
     fn remove(&mut self, key: &str) {
-        self.map.remove(key);
+        if self.map.remove(key).is_none() {
+            println!("Key '{}' not found", key);
+        }
     }
 
     fn print_keys(&self) {
@@ -172,36 +174,17 @@ impl BookmarksMap{
     }
 
     fn read(path: &Path) -> StringMap {
-        let display = path.display();
         match File::open(path) {
             Err(_) => HashMap::new(),
             Ok(mut file) => {
-                let mut s = String::new();
-                file.read_to_string(&mut s).unwrap_or_else(|why| {
-                    panic!("Couldn't read {}: {}", display, why);
-                });
-
-                let map: HashMap<String,String> = json::decode(&s).unwrap_or_else(|why| {
-                    panic!("Could not Decode JSON: {}", why);
-                });
-                map
+                serde_json::from_reader(&mut file).expect("Could not decode JSON")
             }
         }
     }
 
     fn write(&self) {
-        let output = json::encode(&self.map).unwrap();
-
-        let mut f = File::create(&self.path).unwrap_or_else(|why| {
-            panic!("Could not create file {}: {}", self.path.display(), why);
-        });
-
-        f.write_all(output.as_bytes()).unwrap_or_else(|why| {
-            panic!("Could not write to file  {}: {}", self.path.display(), why);
-        });
-
-        f.sync_all().unwrap_or_else(|why| {
-            panic!("Could not sync file  {}: {}", self.path.display(), why)
-        });
+        let mut f = File::create(&self.path).expect("Could not create file");
+        serde_json::to_writer_pretty(&mut f, &self.map).expect("Could not serialize");
+        f.sync_all().expect("Could not sync");
     }
 }
