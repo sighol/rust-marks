@@ -8,6 +8,8 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 
+use std::io::BufReader;
+
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[derive(RustcDecodable, Debug)]
@@ -179,8 +181,9 @@ impl BookmarksMap{
     fn read(path: &Path) -> StringMap {
         match File::open(path) {
             Err(_) => HashMap::new(),
-            Ok(mut file) => {
-                serde_json::from_reader(&mut file).expect("Could not decode JSON")
+            Ok(file) => {
+                let mut reader = BufReader::new(file);
+                serde_json::from_reader(&mut reader).expect("Could not decode JSON")
             }
         }
     }
