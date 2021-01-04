@@ -1,12 +1,12 @@
 extern crate docopt;
 
-extern crate serde_json;
 extern crate rustc_serialize;
+extern crate serde_json;
 
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 
 use std::io::BufReader;
 
@@ -20,7 +20,7 @@ struct Args {
     flag_keys: bool,
     flag_check: bool,
     flag_clean: bool,
-    flag_version: bool
+    flag_version: bool,
 }
 
 type StringMap = HashMap<String, String>;
@@ -53,7 +53,6 @@ Options:
 ";
 
 fn main() {
-
     let args: Args = docopt::Docopt::new(USAGE)
         .map(|a| a.help(true))
         .and_then(|d| d.decode())
@@ -87,8 +86,7 @@ fn main() {
     }
 }
 
-
-impl BookmarksMap{
+impl BookmarksMap {
     fn new() -> BookmarksMap {
         let path_buf = BookmarksMap::get_path();
 
@@ -138,7 +136,7 @@ impl BookmarksMap{
         for key in self.get_keys() {
             let mut bfr = "".to_string();
             let len = key.len();
-            for _ in 0..(max_len-len) {
+            for _ in 0..(max_len - len) {
                 bfr.push(' ');
             }
             println!("{}{}: {}", bfr, key, self.map.get(key).unwrap());
@@ -163,8 +161,7 @@ impl BookmarksMap{
     fn get_bad_keys(&self) -> Vec<String> {
         let mut remove_keys = Vec::new();
         for (key, value) in &self.map {
-            if std::fs::metadata(value).is_err()
-            {
+            if std::fs::metadata(value).is_err() {
                 remove_keys.push(key.to_string());
             }
         }
