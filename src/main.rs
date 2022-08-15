@@ -79,7 +79,8 @@ fn main() {
         if let Some(value) = bm.get(&key) {
             println!("{}", value);
         } else {
-            panic!("Key not found {}", key);
+            eprintln!("Unknown bookmark key: {}", key);
+            std::process::exit(1);
         }
     } else {
         bm.print();
