@@ -1,8 +1,4 @@
-extern crate docopt;
-
-extern crate rustc_serialize;
-extern crate serde_json;
-
+use clap::{Parser};
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
@@ -10,18 +6,28 @@ use std::path::{Path, PathBuf};
 
 use std::io::BufReader;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
-#[derive(RustcDecodable, Debug)]
+#[derive(Parser, Debug)]
+#[command(version)]
 struct Args {
+    #[arg()]
     arg_bookmark: Option<String>,
-    flag_add: Option<String>,
-    flag_delete: Option<String>,
-    flag_keys: bool,
-    flag_check: bool,
-    flag_clean: bool,
-    flag_version: bool,
+
+    #[arg(short, long)]
+    add: Option<String>,
+
+    #[arg(short, long)]
+    delete: Option<String>,
+
+    #[arg(short, long)]
+    keys: bool,
+
+    #[arg(long)]
+    check: bool,
+
+    #[arg(long)]
+    clean: bool,
 }
+
 
 type StringMap = HashMap<String, String>;
 
@@ -30,51 +36,25 @@ struct BookmarksMap {
     map: StringMap,
 }
 
-static USAGE: &'static str = "
-Usage:
-    marks
-    marks <bookmark>
-    marks --add=<bookmark>
-    marks --delete=<bookmark>
-    marks --keys
-    marks --check
-    marks --clean
-    marks --version
-    marks --help
-
-Options:
-    -k, --keys               Show keys.
-    -a, --add=<bookmark>     Add bookmark for current directory
-    -d, --delete=<bookmark>  Delete bookmark.
-    -h, --help               Show this message.
-    --check                  Check for tags pointing to non.
-    --clean                  Delete non existing bookmarks.
-    --version                Print version information.
-";
 
 fn main() {
-    let args: Args = docopt::Docopt::new(USAGE)
-        .map(|a| a.help(true))
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+    let args = Args::parse();
 
     let mut bm = BookmarksMap::new();
 
-    if let Some(key) = args.flag_add {
+    if let Some(key) = args.add {
         bm.add(&key);
         bm.write()
-    } else if let Some(key) = args.flag_delete {
+    } else if let Some(key) = args.delete {
         bm.remove(&key);
         bm.write()
-    } else if args.flag_keys {
+    } else if args.keys {
         bm.print_keys();
-    } else if args.flag_check {
+    } else if args.check {
         bm.check();
-    } else if args.flag_clean {
+    } else if args.clean {
         bm.clean();
         bm.write();
-    } else if args.flag_version {
-        println!("{}", VERSION);
     } else if let Some(key) = args.arg_bookmark {
         if let Some(value) = bm.get(&key) {
             println!("{}", value);
